@@ -30,7 +30,7 @@ model = load_model("model.pkl")
 # Prediction route to handle form submissions
 @app.route("/predict", methods=["POST"])
 def predict():
-    features_validated: Features = Features(features=request.json()["features"])
+    features_validated: Features = Features(features=request.json["features"])
     # Get the numerical prediction
     prediction_index = model.predict([features_validated.features])[0]
     # Map the numerical prediction to the label
