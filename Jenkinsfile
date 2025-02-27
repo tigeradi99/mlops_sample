@@ -80,7 +80,7 @@ pipeline {
                 // Pytest code
                 script {
                     echo 'Evaluating Model...'
-                    bat "pytest model_evaluation.py"
+                    bat "python model_evaluation.py"
                 }
             }
             post{
@@ -137,7 +137,7 @@ pipeline {
 
     post{
         always {
-            cleanWS()
+            cleanWs()
         }
     }
 }
