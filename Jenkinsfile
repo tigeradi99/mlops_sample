@@ -8,11 +8,7 @@ import groovy.transform.Field
 
 pipeline {
     agent any
-    environment {
-        DOCKERHUB_CREDENTIAL_ID = 'mlops-jenkins-dockerhub-token'
-        DOCKERHUB_REGISTRY = 'https://registry.hub.docker.com'
-        DOCKERHUB_REPOSITORY = 'iquantc/mlops-proj-01'
-    }
+    
     stages {
 
         //stage('Clone Repository') {
