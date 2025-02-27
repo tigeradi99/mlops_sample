@@ -4,7 +4,6 @@ import groovy.transform.Field
 @Field def PREPROCESS_DATA = 'NOT RUN'
 @Field def TRAIN_MODEL = 'NOT RUN'
 @Field def TEST_STATUS = 'NOT RUN'
-@Field def MODEL_SERVE = 'NOT RUN'
 @Field def MODEL_SERVE_TEST = 'NOT RUN'
 @Field def S3_DEPLOY_STATUS = 'NOT RUN'
 
@@ -93,35 +92,13 @@ pipeline {
             }
         }
 
-        stage('Start Serving Model') {
-            steps {
-                // Pytest code
-                script {
-                    echo 'Serving Model for testing...'
-                    bat "python app.py"
-                }
-            }
-            post{
-                success{
-                    script{MODEL_SERVE = 'SUCCESS'}
-                }
-                failure{
-                    script{MODEL_SERVE = 'FAILED'}
-                }
-            }
-        }
-
         stage('Test Model Server') {
             steps {
                 // Pytest code
                 script {
                     echo 'Testing served model...'
                     // Test the server with sample values
-                    bat '''
-                        curl -X POST "http://127.0.0.1:5000/predict" ^
-                        -H "Content-Type: application/json" ^
-                        -d "{\\"features\\": [13.2, 2.77, 2.51, 18.5, 103.0, 1.15, 2.61, 0.26, 1.46, 3.0, 1.05, 3.33, 820.0]}"
-                    '''
+                    bat '''pytest tests/test_model.py'''
                 }
             }
             post{

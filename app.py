@@ -1,6 +1,6 @@
 from typing import List
 import joblib
-from flask import Flask, request, render_template
+from flask import Flask, request, jsonify
 from pydantic import BaseModel
 
 app = Flask(__name__)
@@ -22,9 +22,9 @@ def load_model(file_path):
 model = load_model("model.pkl")
 
 # Home route to display the form
-@app.route("/")
-def home():
-    return render_template("index.html")
+# @app.route("/")
+# def home():
+#     return render_template("index.html")
 
 
 # Prediction route to handle form submissions
@@ -37,9 +37,7 @@ def predict():
     prediction_label = LABELS[prediction_index]
 
     # Display the prediction on the same page
-    return render_template(
-        "index.html", prediction_text=f"Predicted Wine Class: {prediction_label}"
-    )
+    return jsonify({"prediction_text": f"Predicted Wine Class: {prediction_label}"})
 
 
 if __name__ == "__main__":
