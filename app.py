@@ -1,18 +1,25 @@
-import pickle
-import os
+from typing import List
+import joblib
 from flask import Flask, request, render_template
+from pydantic import BaseModel
 
 app = Flask(__name__)
 
 # Load the model
-MODEL_PATH = "model/iris_model.pkl"
-if not os.path.exists(MODEL_PATH):
-    raise Exception(
-        "Model file not found. Make sure to train the model by running 'train.py'."
-    )
+# Define the labels corresponding to the target classes
+LABELS = [
+    "Verdante",  # A vibrant and fresh wine, inspired by its balanced acidity and crisp flavors.
+    "Rubresco",  # A rich and robust wine, named for its deep, ruby color and bold taste profile.
+    "Floralis",  # A fragrant and elegant wine, known for its floral notes and smooth finish.
+]
 
-with open(MODEL_PATH, "rb") as f:
-    model = pickle.load(f)
+class Features(BaseModel):
+    features: List[float]
+
+def load_model(file_path):
+    return joblib.load(file_path)
+
+model = load_model("model.pkl")
 
 # Home route to display the form
 @app.route("/")
@@ -23,15 +30,15 @@ def home():
 # Prediction route to handle form submissions
 @app.route("/predict", methods=["POST"])
 def predict():
-    # Get the input features from the form
-    features = [float(x) for x in request.form.values()]
-
-    # Make a prediction using the model
-    prediction = model.predict([features])[0]
+    features_validated: Features = Features(features=request.json()["features"])
+    # Get the numerical prediction
+    prediction_index = model.predict([features_validated.features])[0]
+    # Map the numerical prediction to the label
+    prediction_label = LABELS[prediction_index]
 
     # Display the prediction on the same page
     return render_template(
-        "index.html", prediction_text=f"Predicted Iris Class: {prediction}"
+        "index.html", prediction_text=f"Predicted Wine Class: {prediction_label}"
     )
 
 

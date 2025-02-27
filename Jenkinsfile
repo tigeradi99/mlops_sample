@@ -1,9 +1,11 @@
 import groovy.transform.Field
 
 @Field def INITIALIZE_STATUS = 'NOT RUN'
-@Field def LINT_CODE = 'NOT RUN'
+@Field def PREPROCESS_DATA = 'NOT RUN'
+@Field def TRAIN_MODEL = 'NOT RUN'
 @Field def TEST_STATUS = 'NOT RUN'
-@Field def STYLE_CHECK_STATUS = 'NOT RUN'
+@Field def MODEL_SERVE = 'NOT RUN'
+@Field def MODEL_SERVE_TEST = 'NOT RUN'
 @Field def S3_DEPLOY_STATUS = 'NOT RUN'
 
 pipeline {
@@ -24,7 +26,7 @@ pipeline {
         stage('Intialize'){
             steps{
                 script{
-                    bat 'echo "Starting initialization..."'
+                    bat 'pip install -r requirements.txt"'
                 }
             }
             post{
@@ -33,39 +35,52 @@ pipeline {
                 }
                 failure{
                     script{INITIALIZE_STATUS = 'FAILED'}
-                    cleanWs()
                 }
             }
         }
 
-        stage('Lint Code') {
+        stage('Load and Preprocess Data') {
             steps {
                 // Lint code
                 script {
-                    echo 'Linting Python Code...'
-                    bat "python -m pip install --break-system-packages -r requirements.txt"
-                    bat "pylint app.py train.py --output=pylint-report.txt --exit-zero"
-                    bat "flake8 app.py train.py --ignore=E501,E302 --output-file=flake8-report.txt"
-                    bat "black app.py train.py"
+                    echo 'Loading and Preprocessing Data...'
+                    bat "python load_data.py"
                 }
             }
             post{
                 success{
-                    script{LINT_CODE = 'SUCCESS'}
+                    script{PREPROCESS_DATA = 'SUCCESS'}
                 }
                 failure{
-                    script{LINT_CODE = 'FAILED'}
-                    cleanWs()
+                    script{PREPROCESS_DATA = 'FAILED'}
                 }
             }
         }
 
-        stage('Test Code') {
+        stage('Train Model') {
+            steps {
+                // Lint code
+                script {
+                    echo 'Training model...'
+                    bat "python model_training.py"
+                }
+            }
+            post{
+                success{
+                    script{TRAIN_MODEL = 'SUCCESS'}
+                }
+                failure{
+                    script{TRAIN_MODEL = 'FAILED'}
+                }
+            }
+        }
+
+        stage('Model Evaluation') {
             steps {
                 // Pytest code
                 script {
-                    echo 'Testing Python Code...'
-                    bat "pytest tests/"
+                    echo 'Evaluating Model...'
+                    bat "pytest model_evaluation.py"
                 }
             }
             post{
@@ -74,62 +89,55 @@ pipeline {
                 }
                 failure{
                     script{TEST_STATUS = 'FAILED'}
-                    cleanWs()
                 }
             }
         }
 
-        // stage('Trivy FS Scan') {
-        //     steps {
-        //         // Trivy Filesystem Scan
-        //         script {
-        //             echo 'Scannning Filesystem with Trivy...'
-        //             sh "trivy fs ./ --format table -o trivy-fs-report.html"
-        //         }
-        //     }
-        // }
+        stage('Start Serving Model') {
+            steps {
+                // Pytest code
+                script {
+                    echo 'Serving Model for testing...'
+                    bat "python app.py"
+                }
+            }
+            post{
+                success{
+                    script{MODEL_SERVE = 'SUCCESS'}
+                }
+                failure{
+                    script{MODEL_SERVE = 'FAILED'}
+                }
+            }
+        }
 
-        // stage('Build Docker Image') {
-        //     steps {
-        //         // Build Docker Image
-        //         script {
-        //             echo 'Building Docker Image...'
-        //             dockerImage = docker.build("${DOCKERHUB_REPOSITORY}:latest") 
-        //         }
-        //     }
-        // }
+        stage('Test Model Server') {
+            steps {
+                // Pytest code
+                script {
+                    echo 'Testing served model...'
+                    // Test the server with sample values
+                    bat '''
+                        curl -X POST "http://127.0.0.1:5000/predict" ^
+                        -H "Content-Type: application/json" ^
+                        -d "{\\"features\\": [13.2, 2.77, 2.51, 18.5, 103.0, 1.15, 2.61, 0.26, 1.46, 3.0, 1.05, 3.33, 820.0]}"
+                    '''
+                }
+            }
+            post{
+                success{
+                    script{MODEL_SERVE_TEST = 'SUCCESS'}
+                }
+                failure{
+                    script{MODEL_SERVE_TEST = 'FAILED'}
+                }
+            }
+        }      
+    }
 
-        // stage('Trivy Docker Image Scan') {
-        //     steps {
-        //         // Trivy Docker Image Scan
-        //         script {
-        //             echo 'Scanning Docker Image with Trivy...'
-        //             sh "trivy image ${DOCKERHUB_REPOSITORY}:latest --format table -o trivy-image-report.html"
-        //         }
-        //     }
-        // }
-
-        // stage('Push Docker Image') {
-        //     steps {
-        //         // Push Docker Image to DockerHub
-        //         script {
-        //             echo 'Pushing Docker Image to DockerHub...'
-        //             docker.withRegistry("${DOCKERHUB_REGISTRY}", "${DOCKERHUB_CREDENTIAL_ID}"){
-        //                 dockerImage.push('latest')
-        //             }
-        //         }
-        //     }
-        // }
-
-        // stage('Deploy') {
-        //     steps {
-        //         // Deploy Image to Amazon ECS
-        //         script {
-        //             echo 'Deploying to production...'
-        //                 sh "aws ecs update-service --cluster iquant-ecs --service iquant-ecs-svc --force-new-deployment"
-        //             }
-        //         }
-        //     }
-        // }
+    post{
+        always {
+            cleanWS()
+        }
     }
 }
